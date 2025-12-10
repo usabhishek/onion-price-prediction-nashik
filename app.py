@@ -2,64 +2,116 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from datetime import date
+from datetime import date, datetime
 
 MODEL_PATH = "onion_price_xgboost.pkl"
 R2_DISPLAY_PERCENT = "98%"
 MIN_DATE = date(2002, 4, 1)
 MAX_DATE = date(2025, 12, 6)
 
+# Auto-correct arrival_date default if today > MAX_DATE
+default_date = date.today() if date.today() <= MAX_DATE else MAX_DATE
+
 all_markets = [
-    "Chandvad", "Chandvad APMC", "Devala", "Devala APMC",
-    "Dindori", "Dindori(Vani)", "Dindori(Vani) APMC", "Ghoti",
-    "Kalvan", "Kalvan APMC", "Lasalgaon", "Lasalgaon APMC",
-    "Lasalgaon(Niphad)", "Lasalgaon(Niphad) APMC",
-    "Lasalgaon(Vinchur)", "Lasalgaon(Vinchur) APMC",
-    "Malegaon", "Malharshree Farmers Producer Co Ltd",
+    "Chandvad", "Chandvad APMC", "Devala", "Devala APMC", "Dindori", "Dindori(Vani)",
+    "Dindori(Vani) APMC", "Ghoti", "Kalvan", "Kalvan APMC", "Lasalgaon",
+    "Lasalgaon APMC", "Lasalgaon(Niphad)", "Lasalgaon(Niphad) APMC",
+    "Lasalgaon(Vinchur)", "Lasalgaon(Vinchur) APMC", "Malegaon",
+    "Malharshree Farmers Producer Co Ltd",
     "Mankamneshwar Farmar Producer CoLtd Sanchalit Mank",
-    "Manmad", "Manmad APMC", "Nampur", "Nampur APMC",
-    "Nandgaon", "Nandgaon APMC", "Nashik(Devlali)", "Nasik",
-    "Nasik APMC", "Pimpalgaon", "Pimpalgaon APMC",
+    "Manmad", "Manmad APMC", "Nampur", "Nampur APMC", "Nandgaon", "Nandgaon APMC",
+    "Nashik(Devlali)", "Nasik", "Nasik APMC", "Pimpalgaon", "Pimpalgaon APMC",
     "Pimpalgaon Baswant(Saykheda)",
-    "Pimpalgaon Baswant(Saykheda) APMC",
-    "Premium Krushi Utpanna Bazar", "Satana", "Satana APMC",
-    "Shivsiddha Govind Producer Company Limited Sanchal",
+    "Pimpalgaon Baswant(Saykheda) APMC", "Premium Krushi Utpanna Bazar",
+    "Satana", "Satana APMC", "Shivsiddha Govind Producer Company Limited Sanchal",
     "Shivsiddha Govind Producer Company Limited Sanchal APMC",
-    "Shree Rameshwar Krushi Market",
-    "Sinner", "Sinner APMC", "Suragana", "Umrane",
-    "Umrane APMC", "Yeola", "Yeola APMC"
+    "Shree Rameshwar Krushi Market", "Sinner", "Sinner APMC", "Suragana",
+    "Umrane", "Umrane APMC", "Yeola", "Yeola APMC"
 ]
 
 varieties = ["Other", "Pole", "Red", "1st Sort", "White", "Dry F.A.Q.", "Onion", "Local variety"]
 grades = ["FAQ", "Local"]
 
+
+# =====================================================================
+# PAGE CONFIGURATION + CUSTOM CSS (Modern UI like 2nd image)
+# =====================================================================
 st.set_page_config(page_title="Onion Price Predictor", layout="wide", page_icon="🧅")
 
 st.markdown("""
 <style>
-.stApp { background-color: #ffffff; }
-.card {
-    background: #ffffff;
-    padding: 18px;
-    border-radius: 12px;
-    box-shadow: 0px 6px 18px rgba(0,0,0,0.07);
-    margin-bottom: 20px;
+
+html, body, [class*="css"]  {
+    font-family: 'Inter', sans-serif;
 }
-.header {
-    background: linear-gradient(90deg, #e8f5e9, white);
-    padding: 18px;
-    border-radius: 12px;
-    margin-bottom: 20px;
+
+.main-container {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
 }
-.result-card {
-    background: linear-gradient(135deg, #0f9d58, #1b5e20);
+
+.header-box {
+    background: linear-gradient(90deg, #F6F9ED, #FFFFFF);
+    padding: 22px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    text-align: center;
+    border: 1px solid #E5E5E5;
+}
+
+.form-card {
+    background: #FFFFFF;
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0px 4px 18px rgba(0,0,0,0.06);
+    border: 1px solid #EFEFEF;
+}
+
+input, select, .stDateInput input {
+    border-radius: 8px !important;
+}
+
+.stButton>button {
+    width: 100%;
+    background: linear-gradient(90deg, #7CB342, #558B2F);
     color: white;
-    padding: 18px;
-    border-radius: 12px;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 18px;
+    border: none;
 }
+
+.stButton>button:hover {
+    background: linear-gradient(90deg, #8BC34A, #689F38);
+    color: white;
+}
+
+.result-card {
+    background: linear-gradient(135deg, #2E7D32, #1B5E20);
+    color: white;
+    padding: 25px;
+    border-radius: 14px;
+    margin-top: 20px;
+}
+
+.metric-title {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.metric-value {
+    font-size: 42px;
+    font-weight: 800;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
+
+# =====================================================================
+# LOAD MODEL
+# =====================================================================
 @st.cache_resource
 def load_model(path):
     try:
@@ -70,39 +122,56 @@ def load_model(path):
 
 model = load_model(MODEL_PATH)
 
+
+# =====================================================================
+# PAGE LAYOUT
+# =====================================================================
+
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Prediction", "Model Performance", "Insights"])
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Model: XGBoost**")
-st.sidebar.markdown(f"**R² Score: {R2_DISPLAY_PERCENT}**")
+st.sidebar.write("Model: **XGBoost**")
+st.sidebar.write(f"R² Score: **{R2_DISPLAY_PERCENT}**")
 
+
+# =====================================================================
+# PREDICTION PAGE (Main UI similar to 2nd image)
+# =====================================================================
 if page == "Prediction":
+    
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-    st.markdown('<div class="header"><h2>🧅 Onion Price Prediction</h2></div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Header
+    st.markdown("""
+        <div class="header-box">
+            <h2>🧅 Onion Price Prediction</h2>
+            <p>AI-Powered Agricultural Price Forecasting</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Form
+    st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
-
     with c1:
         market = st.selectbox("Market", all_markets)
         variety = st.selectbox("Variety", varieties)
         grade = st.selectbox("Grade", grades)
 
     with c2:
-        arrival_date = st.date_input("Arrival Date", value=date.today(), min_value=MIN_DATE, max_value=MAX_DATE)
-        min_price = st.number_input("Min Price (₹)", value=375, min_value=0, max_value=50000)
-        max_price = st.number_input("Max Price (₹)", value=1224, min_value=0, max_value=50000)
+        arrival_date = st.date_input("Arrival Date", value=default_date,
+                                     min_value=MIN_DATE, max_value=MAX_DATE)
+        min_price = st.number_input("Min Price (₹)", value=375, min_value=0)
+        max_price = st.number_input("Max Price (₹)", value=1224, min_value=0)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
     if min_price > max_price:
         st.error("Min price cannot be greater than max price.")
 
+    # Predict Button
     if st.button("Predict Price"):
         if model is not None:
-            day = arrival_date.day
-            month = arrival_date.month
-            year = arrival_date.year
 
             df_input = pd.DataFrame({
                 "market": [market],
@@ -110,72 +179,22 @@ if page == "Prediction":
                 "grade": [grade],
                 "min_price": [min_price],
                 "max_price": [max_price],
-                "day": [day],
-                "month": [month],
-                "year": [year]
+                "day": [arrival_date.day],
+                "month": [arrival_date.month],
+                "year": [arrival_date.year]
             })
 
             pred = model.predict(df_input)[0]
 
+            # Result UI
             st.markdown(f"""
             <div class="result-card">
-                <h3>Predicted Modal Price</h3>
-                <h1>₹ {pred:.2f}</h1>
-                <p>This model explains <b>{R2_DISPLAY_PERCENT}</b> of price variation.</p>
+                <div class="metric-title">Predicted Modal Price</div>
+                <div class="metric-value">₹ {pred:.2f}</div>
+                <p>This model explains <b>{R2_DISPLAY_PERCENT}</b> of market price variation.</p>
             </div>
             """, unsafe_allow_html=True)
 
             st.progress(0.98)
 
-elif page == "Model Performance":
-
-    st.markdown('<div class="header"><h2>📊 Model Performance</h2></div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    comparison_df = pd.DataFrame({
-        "Model": ["XGBoost", "Random Forest", "Gradient Boosting", "Decision Tree", "KNN Regressor", "Linear Regression"],
-        "MAE": [59.47, 68.01, 69.12, 76.54, 85.26, 88.72],
-        "RMSE": [91.46, 103.99, 104.87, 120.84, 123.23, 132.53],
-        "R² Score": [0.9772, 0.97055, 0.97005, 0.96023, 0.95864, 0.95217]
-    })
-
-    st.dataframe(comparison_df.style.format({"MAE": "{:.2f}", "RMSE": "{:.2f}", "R² Score": "{:.4f}"}), height=300)
-    st.markdown("### Best Model: **XGBoost**")
     st.markdown('</div>', unsafe_allow_html=True)
-
-elif page == "Insights":
-
-    st.markdown('<div class="header"><h2>🌍 Market Insights & Key Findings</h2></div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    st.subheader("1️⃣ Importance of Onion Market in India")
-    st.markdown("""
-    - India is among the world's top onion producers.  
-    - **Nashik district** contributes over **40%** of India's onion supply.  
-    - Lasalgaon APMC is Asia’s **largest onion trading market**.  
-    """)
-
-    st.subheader("2️⃣ Seasonal Price Variation")
-    st.markdown("""
-    - **Rabi Season (Jan–March):** Highest supply → stable prices  
-    - **Monsoon (Jun–Sept):** Storage damage → higher prices  
-    - **Festival periods:** Sudden spikes due to increased demand  
-    - **Heavy rainfall / crop disease:** Rapid inflation  
-    """)
-
-    st.subheader("3️⃣ Why Price Prediction is Valuable")
-    st.markdown("""
-    - Guides farmers in **storage vs. immediate sale** decisions  
-    - Helps traders optimize **inventory and logistics**  
-    - Supports government policy for **export bans and inflation control**  
-    """)
-
-    st.subheader("4️⃣ Future Enhancements")
-    st.markdown("""
-    - Integrate **rainfall, temperature, soil moisture** data  
-    - Add **transportation cost** and **supply-chain delay**  
-    - Use LSTM/Time-Series models for **long-term forecasting**  
-    - Develop a mobile app for **real-time decision support**  
-    """)
-
-    st.success("These insights strengthen project documentation and viva presentation.")

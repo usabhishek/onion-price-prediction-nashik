@@ -4,6 +4,9 @@ Predicting **onion modal prices** using Machine Learning with real market data f
 This project includes **data cleaning**, **EDA**, **model comparison**, **XGBoost training**, and a **Streamlit web application**.
 
 ---
+---
+Live link :https://onion-price-prediction-nashik-inabhishek.streamlit.app/
+---
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge" />

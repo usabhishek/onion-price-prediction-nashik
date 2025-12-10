@@ -4,81 +4,68 @@ import numpy as np
 import joblib
 from datetime import date
 
-MODEL_PATH = "onion_price_xgboost.pkl"
-R2_DISPLAY_PERCENT = "98%"
+# ---------------------- MODEL ----------------------
+model = joblib.load("onion_price_xgboost.pkl")
+R2_SCORE = 0.9772
+
+# ---------------------- CONSTANTS ----------------------
 MIN_DATE = date(2002, 4, 1)
 MAX_DATE = date(2025, 12, 6)
-
 default_date = date.today() if date.today() <= MAX_DATE else MAX_DATE
 
 all_markets = [
-    "Chandvad", "Chandvad APMC", "Devala", "Devala APMC", "Dindori", "Dindori(Vani)",
-    "Dindori(Vani) APMC", "Ghoti", "Kalvan", "Kalvan APMC", "Lasalgaon",
-    "Lasalgaon APMC", "Lasalgaon(Niphad)", "Lasalgaon(Niphad) APMC",
-    "Lasalgaon(Vinchur)", "Lasalgaon(Vinchur) APMC", "Malegaon",
-    "Malharshree Farmers Producer Co Ltd",
-    "Mankamneshwar Farmar Producer CoLtd Sanchalit Mank",
-    "Manmad", "Manmad APMC", "Nampur", "Nampur APMC", "Nandgaon", "Nandgaon APMC",
-    "Nashik(Devlali)", "Nasik", "Nasik APMC", "Pimpalgaon", "Pimpalgaon APMC",
-    "Pimpalgaon Baswant(Saykheda)", "Pimpalgaon Baswant(Saykheda) APMC",
-    "Premium Krushi Utpanna Bazar", "Satana", "Satana APMC",
-    "Shivsiddha Govind Producer Company Limited Sanchal",
+    "Chandvad","Chandvad APMC","Devala","Devala APMC","Dindori","Dindori(Vani)",
+    "Dindori(Vani) APMC","Ghoti","Kalvan","Kalvan APMC","Lasalgaon","Lasalgaon APMC",
+    "Lasalgaon(Niphad)","Lasalgaon(Niphad) APMC","Lasalgaon(Vinchur)",
+    "Lasalgaon(Vinchur) APMC","Malegaon","Malharshree Farmers Producer Co Ltd",
+    "Mankamneshwar Farmar Producer CoLtd Sanchalit Mank","Manmad","Manmad APMC",
+    "Nampur","Nampur APMC","Nandgaon","Nandgaon APMC","Nashik(Devlali)","Nasik",
+    "Nasik APMC","Pimpalgaon","Pimpalgaon APMC","Pimpalgaon Baswant(Saykheda)",
+    "Pimpalgaon Baswant(Saykheda) APMC","Premium Krushi Utpanna Bazar","Satana",
+    "Satana APMC","Shivsiddha Govind Producer Company Limited Sanchal",
     "Shivsiddha Govind Producer Company Limited Sanchal APMC",
-    "Shree Rameshwar Krushi Market", "Sinner", "Sinner APMC", "Suragana",
-    "Umrane", "Umrane APMC", "Yeola", "Yeola APMC"
+    "Shree Rameshwar Krushi Market","Sinner","Sinner APMC","Suragana","Umrane",
+    "Umrane APMC","Yeola","Yeola APMC"
 ]
 
 varieties = ["Other", "Pole", "Red", "1st Sort", "White", "Dry F.A.Q.", "Onion", "Local variety"]
 grades = ["FAQ", "Local"]
 
-# ------------ PAGE CONFIG ------------
-st.set_page_config(page_title="Onion Price Predictor", page_icon="🧅", layout="wide")
+# ---------------------- PAGE CONFIG ----------------------
+st.set_page_config(page_title="Onion Price Predictor", layout="wide", page_icon="🧅")
 
-# ------------ UNIVERSAL CSS ------------
+# ---------------------- GLOBAL THEME ----------------------
 st.markdown("""
 <style>
-
-html, body, [class*="css"]  {
+html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
     color: #000000 !important;
 }
 
-h1, h2, h3, h4, h5, h6, label, p, div, span {
-    color: #000000 !important;
-}
-
-.main-container {
-    max-width: 1150px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
 .header-box {
     background: linear-gradient(90deg, #E8F5E9, #FFFFFF);
-    padding: 22px;
+    padding: 20px;
     border-radius: 14px;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
     text-align: center;
     border: 1px solid #DDDDDD;
+    color: black
 }
 
-.form-card, .card {
+.card {
     background: #FFFFFF;
-    padding: 25px;
+    padding: 22px;
     border-radius: 14px;
-    box-shadow: 0px 4px 18px rgba(0,0,0,0.06);
+    box-shadow: 0px 4px 18px rgba(0,0,0,0.05);
     border: 1px solid #E5E5E5;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
+    color: black;
 }
 
 input, select, textarea, .stDateInput input {
     border-radius: 8px !important;
-    border: 1px solid #CCCCCC !important;
-    color: #000000 !important;
-}
-
-.stSelectbox > div > div {
-    color: #000000 !important;
+    border: 1px solid #333 !important;
+    color: #111111 !important;
 }
 
 .stButton > button {
@@ -88,7 +75,6 @@ input, select, textarea, .stDateInput input {
     padding: 14px;
     border-radius: 8px;
     font-size: 18px;
-    border: none;
 }
 
 .stButton > button:hover {
@@ -101,74 +87,50 @@ input, select, textarea, .stDateInput input {
     padding: 25px;
     border-radius: 14px;
     margin-top: 20px;
-}
-
-.metric-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: white !important;
+    text-align: center;
 }
 
 .metric-value {
-    font-size: 42px;
+    font-size: 40px;
     font-weight: 800;
-    color: white !important;
 }
 
-.dataframe caption, .dataframe th, .dataframe td {
-    color: #000000 !important;
+.justify {
+    text-align: justify;
+    font-size: 17px;
+    line-height: 1.6;
 }
 
+.center {
+    display: flex;
+    justify-content: center;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ------------ MODEL LOADING ------------
-@st.cache_resource
-def load_model(path):
-    try:
-        return joblib.load(path)
-    except:
-        st.error("Model could not be loaded.")
-        return None
+# ---------------------- NAVIGATION ----------------------
+page = st.sidebar.radio(
+    "Navigation",
+    ["Prediction", "Model Performance", "Insights"]
+)
 
-model = load_model(MODEL_PATH)
-
-# ------------ SIDEBAR ------------
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select Page", ["Prediction", "Model Performance", "Insights"])
-st.sidebar.markdown("---")
-st.sidebar.write("Model: **XGBoost**")
-st.sidebar.write(f"R² Score: **{R2_DISPLAY_PERCENT}**")
-
-
-# =====================================================================
-# PAGE 1: PREDICTION
-# =====================================================================
+# ============================================================
+# 1️⃣ PAGE — PREDICTION
+# ============================================================
 if page == "Prediction":
 
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h2>🧅 Onion Price Prediction</h2>'
+                '<p>AI-Based Agricultural Price Forecasting</p></div>', unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="header-box">
-            <h2>🧅 Onion Price Prediction</h2>
-            <p>AI-powered forecasting engine for agricultural markets</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        market = st.selectbox("Market", all_markets)
-        variety = st.selectbox("Variety", varieties)
-        grade = st.selectbox("Grade", grades)
-
-    with c2:
-        arrival_date = st.date_input("Arrival Date", value=default_date,
-                                     min_value=MIN_DATE, max_value=MAX_DATE)
-        min_price = st.number_input("Min Price (₹)", value=375, min_value=0)
-        max_price = st.number_input("Max Price (₹)", value=1224, min_value=0)
+    market = st.selectbox("Market", all_markets)
+    variety = st.selectbox("Variety", varieties)
+    grade = st.selectbox("Grade", grades)
+    min_price = st.number_input("Min Price (₹)", min_value=0, max_value=50000, value=375)
+    max_price = st.number_input("Max Price (₹)", min_value=0, max_value=50000, value=1224)
+    arrival_date = st.date_input("Expected Date", value=default_date,
+                                 min_value=MIN_DATE, max_value=MAX_DATE)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -176,112 +138,91 @@ if page == "Prediction":
         st.error("Min price cannot be greater than max price.")
 
     if st.button("Predict Price"):
-        if model is not None:
+        df_input = pd.DataFrame({
+            "market": [market],
+            "variety": [variety],
+            "grade": [grade],
+            "min_price": [min_price],
+            "max_price": [max_price],
+            "day": [arrival_date.day],
+            "month": [arrival_date.month],
+            "year": [arrival_date.year]
+        })
 
-            df_input = pd.DataFrame({
-                "market": [market],
-                "variety": [variety],
-                "grade": [grade],
-                "min_price": [min_price],
-                "max_price": [max_price],
-                "day": [arrival_date.day],
-                "month": [arrival_date.month],
-                "year": [arrival_date.year]
-            })
+        pred = model.predict(df_input)[0]
 
-            pred = model.predict(df_input)[0]
+        st.markdown(f"""
+        <div class="result-card">
+            <h3>Predicted Modal Price</h3>
+            <div class="metric-value">₹ {pred:.2f}</div>
+            <p>Model explains <b>{R2_SCORE*100:.2f}%</b> variation in prices.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div class="result-card">
-                <div class="metric-title">Predicted Modal Price</div>
-                <div class="metric-value">₹ {pred:.2f}</div>
-                <p>This model explains <b>{R2_DISPLAY_PERCENT}</b> of price variation.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.progress(R2_SCORE)
 
-            st.progress(0.98)
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# =====================================================================
-# PAGE 2: MODEL PERFORMANCE
-# =====================================================================
+# ============================================================
+# 2️⃣ PAGE — MODEL PERFORMANCE
+# ============================================================
 elif page == "Model Performance":
 
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h2>📊 Model Performance Overview</h2></div>', unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="header-box">
-            <h2>📊 Model Performance Overview</h2>
-            <p>Regression accuracy & model comparison</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    comparison_df = pd.DataFrame({
-        "Model": ["XGBoost", "Random Forest", "Gradient Boosting", "Decision Tree", "KNN Regressor", "Linear Regression"],
-        "MAE": [59.47, 68.01, 69.12, 76.54, 85.26, 88.72],
-        "RMSE": [91.46, 103.99, 104.87, 120.84, 123.23, 132.53],
-        "R² Score": [0.9772, 0.97055, 0.97005, 0.96023, 0.95864, 0.95217]
-    })
-
-    st.dataframe(comparison_df.style.format({"MAE": "{:.2f}", "RMSE": "{:.2f}", "R² Score": "{:.4f}"}), height=320)
-
-    st.markdown("### ⭐ Best Model: **XGBoost**")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Center images
+    st.markdown('<div class="center">', unsafe_allow_html=True)
+    st.image("actual_predicted_plot.png", width=800)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="center">', unsafe_allow_html=True)
+    st.image("residual_plot.png", width=800)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# =====================================================================
-# PAGE 3: INSIGHTS
-# =====================================================================
+    st.markdown('<div class="center">', unsafe_allow_html=True)
+    st.image("model_table.png", width=800)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================
+# 3️⃣ PAGE — INSIGHTS
+# ============================================================
 elif page == "Insights":
 
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h2>🌍 Onion Market Insights & Story</h2></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="card justify">', unsafe_allow_html=True)
 
     st.markdown("""
-        <div class="header-box">
-            <h2>🌍 Market Insights & Key Findings</h2>
-            <p>Understanding market behavior and price volatility</p>
-        </div>
-    """, unsafe_allow_html=True)
+### 🧅 Importance of Onion in Indian Economy
+Onions are one of India's most consumed vegetables and a critical part of the nation's food supply chain. 
+Nashik—especially Lasalgaon—is responsible for nearly **40% of India’s onion distribution** and is Asia’s 
+largest onion hub.
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+### 🌦 Seasonal Factors Affecting Market Prices
+Prices rise and fall sharply due to weather conditions, storage losses, and supply interruptions.  
+- **Rabi (Jan–March):** Fresh harvest → stable prices  
+- **Monsoon (June–Sept):** Storage damage → high volatility  
+- **Festivals or heavy rainfall:** Sudden spikes  
 
-    st.subheader("1️⃣ Importance of Onion Market in India")
-    st.markdown("""
-- India is among the world’s leading onion producers.  
-- **Nashik district** contributes **40%+** of the country’s supply.  
-- Lasalgaon APMC is Asia’s **largest onion trading hub**.  
-""")
+### 🚢 Export–Import Dynamics
+Government export bans, international demand, and crop failure directly impact wholesale prices.
+Any disruption in Nashik instantly affects prices across India.
 
-    st.subheader("2️⃣ Seasonal Price Variation")
-    st.markdown("""
-- **Rabi Season (Jan–March):** Stable and lower prices due to high supply.  
-- **Monsoon Season (Jun–Sept):** Storage loss → price hikes.  
-- **Festivals:** Sudden demand-driven spikes.  
-- **Rainfall / crop disease:** Sharp inflation.  
-""")
+### 📈 Why Prediction Matters
+- Helps farmers decide whether to **store or sell immediately**  
+- Helps traders plan **inventory and logistics**  
+- Helps policymakers anticipate **inflation risk**  
 
-    st.subheader("3️⃣ Why Price Prediction Matters")
-    st.markdown("""
-- Helps farmers with **storage vs. immediate sale** decisions.  
-- Helps traders plan **inventory, logistics, and transport**.  
-- Supports government in **inflation control and export regulation**.  
-""")
+### 🚀 Best Performing Model: XGBoost
+The model used in this project captures **97.72% price variation**, making it 
+highly reliable for short-term price prediction.
 
-    st.subheader("4️⃣ Future Scope")
-    st.markdown("""
-- Add weather + soil parameters for increased accuracy.  
-- Add transportation + supply-chain delay modeling.  
-- Use deep learning (LSTM) for time-series prediction.  
-- Build a mobile app for farmers and mandis.  
-""")
-
-    st.success("These insights strengthen project documentation, viva explanation, and overall presentation.")
+### 📘 Future Scope
+- Add weather data (rainfall, temperature, humidity)  
+- Add transportation + supply chain delays  
+- Use LSTM for long-term forecasting  
+- Mobile portal for farmers  
+    """)
 
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.success("These insights make your project strong for viva, documentation, and demonstrations.")
+

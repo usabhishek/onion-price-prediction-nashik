@@ -100,7 +100,4 @@ Key visualizations included:
 
 **Final Model Used:** ✔ **XGBoost Regression Pipeline**
 
----
-
-## 🏗 Project Structure
 
